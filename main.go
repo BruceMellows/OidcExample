@@ -21,6 +21,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// --- Types ---
+
 type Server struct {
 	router *gin.Engine
 	db     *sql.DB
@@ -33,14 +35,13 @@ type User struct {
 	admin  bool
 }
 
+// --- Global Variables ---
+
 var (
 	clientID     = os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
 	redirectURL  = os.Getenv("REDIRECT_URL")
 	jwtSecret    = []byte(os.Getenv("JWT_SECRET"))
-)
-
-var (
 	codeVerifierStore = map[string]string{} // state -> PKCE verifier
 	usersStore = map[string]User{}
 )
@@ -242,7 +243,11 @@ func getUser(c *gin.Context) (User, error) {
 	return user, nil
 }
 
-// --- Routes ---
+// --- Routes /open ---
+
+func (s *Server) openStatusHandler(c *gin.Context) {
+	c.JSON(200, gin.H{ "status": "ok"})
+}
 
 func (s *Server) openOidcLoginHandler(c *gin.Context) {
 	forceConsent := c.Query("force_consent")
@@ -350,6 +355,8 @@ func (s *Server) openOidcCallbackHandler(c *gin.Context) {
 	c.JSON(200, gin.H { "status": "ok", "token": jwtToken, })
 }
 
+// --- Routes /user ---
+
 func (s *Server) userOidcRefreshHandler(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
@@ -409,16 +416,14 @@ func (s *Server) userInfoHandler(c *gin.Context) {
 	})
 }
 
-func (s *Server) statusHandler(c *gin.Context) {
-	c.JSON(200, gin.H{ "status": "ok"})
-}
+// --- Startup ---
 
 func (s *Server) prepareRouter() {
 	s.router.Use(gin.LoggerWithFormatter(extendedLogFormatter()))
 	s.router.Use(gin.Recovery())
 
 	open := s.router.Group("/open")
-	open.GET("/status", s.statusHandler)
+	open.GET("/status", s.openStatusHandler)
 	open.GET("/oidc/login", s.openOidcLoginHandler)
 	open.GET("/oidc/callback", s.openOidcCallbackHandler)
 
