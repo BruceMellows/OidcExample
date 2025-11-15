@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -35,15 +36,36 @@ type User struct {
 	admin  bool
 }
 
-// --- Global Variables ---
+type CodeVerifier struct {
+	mutex  sync.RWMutex
+	store  map[string]string
+}
+
+type Users struct {
+	mutex  sync.RWMutex
+	store  map[string]User
+}
+
+// --- Static Global Variables ---
 
 var (
 	clientID     = os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
 	redirectURL  = os.Getenv("REDIRECT_URL")
 	jwtSecret    = []byte(os.Getenv("JWT_SECRET"))
-	codeVerifierStore = map[string]string{} // state -> PKCE verifier
-	usersStore = map[string]User{}
+)
+
+// --- Dynamic Global Variables ---
+
+var (
+	codeVerifier = CodeVerifier {
+		mutex: sync.RWMutex{},
+		store: map[string]string{},
+	}
+	users        = Users {
+		mutex: sync.RWMutex{},
+		store: map[string]User{},
+	}
 )
 
 // --- Helpers ---
@@ -255,7 +277,7 @@ func (s *Server) openOidcLoginHandler(c *gin.Context) {
 	challenge := codeChallengeS256(verifier)
 	state := fmt.Sprintf("%d", time.Now().UnixNano())
 
-	codeVerifierStore[state] = verifier
+	codeVerifier.store[state] = verifier
 
 	authURL, _ := url.Parse("https://accounts.google.com/o/oauth2/v2/auth")
 	params := url.Values{}
@@ -278,12 +300,12 @@ func (s *Server) openOidcLoginHandler(c *gin.Context) {
 func (s *Server) openOidcCallbackHandler(c *gin.Context) {
 	code := c.Query("code")
 	state := c.Query("state")
-	verifier, ok := codeVerifierStore[state]
+	verifier, ok := codeVerifier.store[state]
 	if !ok {
 		c.JSON(400, gin.H{"error": "invalid state"})
 		return
 	}
-	delete(codeVerifierStore, state)
+	delete(codeVerifier.store, state)
 
 	resp, err := http.PostForm("https://oauth2.googleapis.com/token", url.Values{
 		"client_id":     {clientID},
