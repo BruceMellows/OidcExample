@@ -122,7 +122,7 @@ func extendedLogFormatter() gin.LogFormatter {
 	}
 }
 
-func (s *Server) ensureAuthenticatedMiddleware() gin.HandlerFunc {
+func (s *Server) ensureUserMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// get email from claims
 		authHeader := c.GetHeader("Authorization")
@@ -144,7 +144,7 @@ func (s *Server) ensureAuthenticatedMiddleware() gin.HandlerFunc {
 
 		// get records from cache
 		user, err := s.getUser(email)
-		if err != nil {
+		if err != nil || user.login == "" {
 			c.JSON(500, gin.H{"error": "cannot get user"})
 			return
 		}
@@ -424,12 +424,12 @@ func (s *Server) prepareRouter() {
 	open.GET("/oidc/callback", s.openOidcCallbackHandler)
 
 	user := s.router.Group("/user")
-	user.Use(s.ensureAuthenticatedMiddleware())
+	user.Use(s.ensureUserMiddleware())
 	user.GET("/info", s.userInfoHandler)
 	user.GET("/oidc/refresh", s.userOidcRefreshHandler)
 
 	admin := s.router.Group("/admin")
-	admin.Use(s.ensureAuthenticatedMiddleware())
+	admin.Use(s.ensureUserMiddleware())
 	admin.Use(s.ensureAdminMiddleware())
 	admin.GET("/info", s.userInfoHandler)
 
