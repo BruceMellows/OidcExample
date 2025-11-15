@@ -127,7 +127,7 @@ func (s *Server) ensureUserMiddleware() gin.HandlerFunc {
 		// get email from claims
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(401, gin.H{"error": "missing Authorization header"})
+			c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized"})
 			return
 		}
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
@@ -135,17 +135,16 @@ func (s *Server) ensureUserMiddleware() gin.HandlerFunc {
 			return jwtSecret, nil
 		})
 		if !token.Valid {
-			c.JSON(401, gin.H{"error": "invalid token"})
+			c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized"})
 			return
 		}
 		email := token.Claims.(jwt.MapClaims)["email"].(string)
 		addLoggedKeyValue(c, "identity", email) // reported as identity instead of email
 
-
 		// get records from cache
 		user, err := s.getUser(email)
 		if err != nil || user.login == "" {
-			c.JSON(500, gin.H{"error": "cannot get user"})
+			c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized"})
 			return
 		}
 
@@ -164,12 +163,12 @@ func (s *Server) ensureAdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adminAny, ok := c.Get("admin")
 		if !ok {
-			c.JSON(500, gin.H{"error": "not authorized"})
+			c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized"})
 			return
 		}
 
 		if admin, ok := adminAny.(bool); !ok || !admin {
-			c.JSON(500, gin.H{"error": "not authorized"})
+			c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized"})
 			return
 		}
 
