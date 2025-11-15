@@ -84,14 +84,12 @@ func (s *Server) getUser(email string) (User, error) {
 
 		// Query single row
 		row := s.db.QueryRow("SELECT token, login, admin FROM users WHERE email = ?", email)
-
-		//var adminInt int
 		err := row.Scan(&user.token, &user.login, &user.admin)
 		if err == nil {
 			user.email = email
 		} else if err == sql.ErrNoRows {
-			// add email record to from db
-			_, err := s.db.Exec(`INSERT OR REPLACE INTO users (email, token, login, admin) VALUES (?, ?, ?, ?)`, user.email, user.token, user.login, user.admin)
+			// add email record to db
+			_, err := s.db.Exec(`INSERT OR REPLACE INTO users (email, token, login, admin) VALUES (?, ?, ?, ?)`, email, user.token, user.login, user.admin)
 			if err == nil {
 				user.email = email
 			} else {
