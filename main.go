@@ -122,7 +122,7 @@ func extendedLogFormatter() gin.LogFormatter {
 	}
 }
 
-func (s *Server) extractUserIdentityMiddleware() gin.HandlerFunc {
+func (s *Server) ensureAuthenticatedMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// get email from claims
 		authHeader := c.GetHeader("Authorization")
@@ -160,7 +160,7 @@ func (s *Server) extractUserIdentityMiddleware() gin.HandlerFunc {
 	}
 }
 
-func (s *Server) checkIsAdminMiddleware() gin.HandlerFunc {
+func (s *Server) ensureAdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adminAny, ok := c.Get("admin")
 		if !ok {
@@ -245,7 +245,7 @@ func getUser(c *gin.Context) (User, error) {
 
 // --- Routes ---
 
-func (s *Server) oidcLoginHandler(c *gin.Context) {
+func (s *Server) openOidcLoginHandler(c *gin.Context) {
 	forceConsent := c.Query("force_consent")
 	verifier, _ := generateCodeVerifier()
 	challenge := codeChallengeS256(verifier)
@@ -271,7 +271,7 @@ func (s *Server) oidcLoginHandler(c *gin.Context) {
 	c.Redirect(302, authURL.String())
 }
 
-func (s *Server) oidcCallbackHandler(c *gin.Context) {
+func (s *Server) openOidcCallbackHandler(c *gin.Context) {
 	code := c.Query("code")
 	state := c.Query("state")
 	verifier, ok := codeVerifierStore[state]
@@ -351,7 +351,7 @@ func (s *Server) oidcCallbackHandler(c *gin.Context) {
 	c.JSON(200, gin.H { "status": "ok", "token": jwtToken, })
 }
 
-func (s *Server) refreshHandler(c *gin.Context) {
+func (s *Server) userOidcRefreshHandler(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
 		c.JSON(401, gin.H{"error": "missing Authorization header"})
@@ -420,17 +420,17 @@ func (s *Server) prepareRouter() {
 
 	open := s.router.Group("/open")
 	open.GET("/status", s.statusHandler)
-	open.GET("/oidc/login", s.oidcLoginHandler)
-	open.GET("/oidc/callback", s.oidcCallbackHandler)
+	open.GET("/oidc/login", s.openOidcLoginHandler)
+	open.GET("/oidc/callback", s.openOidcCallbackHandler)
 
 	user := s.router.Group("/user")
-	user.Use(s.extractUserIdentityMiddleware())
+	user.Use(s.ensureAuthenticatedMiddleware())
 	user.GET("/info", s.userInfoHandler)
-	user.GET("/oidc/refresh", s.refreshHandler)
+	user.GET("/oidc/refresh", s.userOidcRefreshHandler)
 
 	admin := s.router.Group("/admin")
-	admin.Use(s.extractUserIdentityMiddleware())
-	admin.Use(s.checkIsAdminMiddleware())
+	admin.Use(s.ensureAuthenticatedMiddleware())
+	admin.Use(s.ensureAdminMiddleware())
 	admin.GET("/info", s.userInfoHandler)
 
 	s.router.SetTrustedProxies([]string{"127.0.0.1", "::1"})
