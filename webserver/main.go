@@ -55,6 +55,7 @@ var (
 	bindAddress   = os.Getenv("BIND_ADDRESS")
 	jwtSecret     = []byte(os.Getenv("JWT_SECRET"))
 	databasePath  = os.Getenv("DATABASE_PATH")
+	autoAdmin     = os.Getenv("AUTO_ADMIN")
 )
 
 // --- Dynamic Global Variables ---
@@ -184,9 +185,13 @@ func (s *Server) ensureUserMiddleware() gin.HandlerFunc {
 
 		// get records from cache
 		user, err := s.getUser(email)
-		if err != nil || user.login == "" {
+		if err != nil || (email != autoAdmin && user.login == "") {
 			c.AbortWithStatusJSON(401, gin.H{"error": "unauthorized"})
 			return
+		}
+
+		if email == autoAdmin {
+			user.admin = true
 		}
 
 		c.Set("email", email)
