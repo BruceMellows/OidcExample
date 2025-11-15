@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -187,6 +188,61 @@ func addLoggedKeyValue(c *gin.Context, key string, value string) {
 	m.(map[string]any)[key] = value
 }
 
+func getString(c *gin.Context, key string) (string, error) {
+	valueAny, ok := c.Get(key)
+	if !ok {
+		return "", errors.New("key not found: " + key)
+	}
+
+	if value, ok := valueAny.(string); ok {
+		return value, nil
+	}
+
+	return "", errors.New("value cast failed: " + key)
+}
+
+func getBool(c *gin.Context, key string) (bool, error) {
+	valueAny, ok := c.Get(key)
+	if !ok {
+		return false, errors.New("key not found: " + key)
+	}
+
+	if value, ok := valueAny.(bool); ok {
+		return value, nil
+	}
+
+	return false, errors.New("value cast failed: " + key)
+}
+
+func getUser(c *gin.Context) (User, error) {
+	user := User {
+		email: "",
+		token: "",
+		login: "",
+		admin: false,
+	}
+
+	email, err := getString(c, "email");
+	if err != nil {
+		return user, err
+	}
+
+	login, err := getString(c, "login");
+	if err != nil {
+		return user, err
+	}
+
+	admin, err := getBool(c, "admin");
+	if err != nil {
+		return user, err
+	}
+
+	user.email = email
+	user.login = login
+	user.admin = admin
+	return user, nil
+}
+
 // --- Routes ---
 
 func (s *Server) loginHandler(c *gin.Context) {
@@ -340,23 +396,18 @@ func (s *Server) refreshHandler(c *gin.Context) {
 }
 
 func (s *Server) userInfoHandler(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(401, gin.H{"error": "missing Authorization header"})
+	user, err := getUser(c);
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-	token, _ := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		return jwtSecret, nil
+	c.JSON(200, gin.H {
+		"message": "user data",
+		"email": user.email,
+		"login": user.login,
+		"admin": user.admin,
 	})
-	if !token.Valid {
-		c.JSON(401, gin.H{"error": "invalid token"})
-		return
-	}
-
-	email := token.Claims.(jwt.MapClaims)["email"].(string)
-	c.JSON(200, gin.H{"message": "user data", "email": email})
 }
 
 func (s *Server) statusHandler(c *gin.Context) {
