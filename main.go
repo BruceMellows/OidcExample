@@ -398,7 +398,7 @@ func main() {
 		log.Fatal("GOOGLE_CLIENT_ID and JWT_SECRET must be set")
 	}
 
-	db, err := sql.Open("sqlite3", "./backuptool.sqlite")
+	db, err := sql.Open("sqlite3", "./data/backuptool.sqlite")
 	if err != nil {
 		log.Fatal(err)
 	}
