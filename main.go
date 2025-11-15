@@ -46,7 +46,7 @@ var (
 
 // --- Helpers ---
 
-func (s *Server) GetUser(email string) (User, error) {
+func (s *Server) getUser(email string) (User, error) {
 	user := User {
 		email: email,
 		token: "",
@@ -99,16 +99,7 @@ func splitToken(token string) []string {
 	return strings.Split(token, ".")
 }
 
-func GetString(c *gin.Context, key string) (string, bool) {
-	v, exists := c.Get(key)
-	if !exists {
-		return "", false
-	}
-	str, ok := v.(string)
-	return str, ok
-}
-
-func ExtendedLogFormatter() gin.LogFormatter {
+func extendedLogFormatter() gin.LogFormatter {
 	return func(param gin.LogFormatterParams) string {
 		logged := ""
 		if m, ok := param.Keys["logged"]; ok {
@@ -130,7 +121,7 @@ func ExtendedLogFormatter() gin.LogFormatter {
 	}
 }
 
-func (s *Server) ExtractUserIdentityMiddleware() gin.HandlerFunc {
+func (s *Server) extractUserIdentityMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// get email from claims
 		authHeader := c.GetHeader("Authorization")
@@ -147,11 +138,11 @@ func (s *Server) ExtractUserIdentityMiddleware() gin.HandlerFunc {
 			return
 		}
 		email := token.Claims.(jwt.MapClaims)["email"].(string)
-		AddLoggedKeyValue(c, "identity", email) // reported as identity instead of email
+		addLoggedKeyValue(c, "identity", email) // reported as identity instead of email
 
 
 		// get records from cache
-		user, err := s.GetUser(email)
+		user, err := s.getUser(email)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "cannot get user"})
 			return
@@ -162,13 +153,13 @@ func (s *Server) ExtractUserIdentityMiddleware() gin.HandlerFunc {
 		c.Set("token", user.token)
 		c.Set("admin", user.admin)
 
-		AddLoggedKeyValue(c, "identity", email)
+		addLoggedKeyValue(c, "identity", email)
 
 		c.Next()
 	}
 }
 
-func (s *Server) CheckIsAdminMiddleware() gin.HandlerFunc {
+func (s *Server) checkIsAdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adminAny, ok := c.Get("admin")
 		if !ok {
@@ -185,7 +176,7 @@ func (s *Server) CheckIsAdminMiddleware() gin.HandlerFunc {
 	}
 }
 
-func AddLoggedKeyValue(c *gin.Context, key string, value string) {
+func addLoggedKeyValue(c *gin.Context, key string, value string) {
 	m, exists := c.Get("logged")
 	if !exists {
 		m = map[string]any{}    // create a new one
@@ -280,7 +271,7 @@ func (s *Server) callbackHandler(c *gin.Context) {
 	}
 
 	// get the user record
-	user, err := s.GetUser(claims.Email)
+	user, err := s.getUser(claims.Email)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to get identity"})
 		return
@@ -322,7 +313,7 @@ func (s *Server) refreshHandler(c *gin.Context) {
 
 	claims := token.Claims.(jwt.MapClaims)
 	email := claims["email"].(string)
-	user, err := s.GetUser(email)
+	user, err := s.getUser(email)
 	if err != nil {
 		c.JSON(401, gin.H{"error": "failed to get identity"})
 		return
@@ -373,7 +364,7 @@ func (s *Server) statusHandler(c *gin.Context) {
 }
 
 func (s *Server) prepareRouter() {
-	s.router.Use(gin.LoggerWithFormatter(ExtendedLogFormatter()))
+	s.router.Use(gin.LoggerWithFormatter(extendedLogFormatter()))
 	s.router.Use(gin.Recovery())
 
 	s.router.GET("/status", s.statusHandler)
@@ -382,12 +373,12 @@ func (s *Server) prepareRouter() {
 	s.router.GET("/refresh", s.refreshHandler)
 
 	user := s.router.Group("/user")
-	user.Use(s.ExtractUserIdentityMiddleware())
+	user.Use(s.extractUserIdentityMiddleware())
 	user.GET("/info", s.userInfoHandler)
 
 	admin := s.router.Group("/admin")
-	admin.Use(s.ExtractUserIdentityMiddleware())
-	admin.Use(s.CheckIsAdminMiddleware())
+	admin.Use(s.extractUserIdentityMiddleware())
+	admin.Use(s.checkIsAdminMiddleware())
 	admin.GET("/info", s.userInfoHandler)
 
 	s.router.SetTrustedProxies([]string{"127.0.0.1", "::1"})
