@@ -404,6 +404,11 @@ func main() {
 	}
 	defer db.Close()
 
+	// Ensure the directory exists
+	if err := os.MkdirAll("./data", os.ModePerm); err != nil {
+		log.Fatalf("failed to create data directory: %v", err)
+	}
+
 	// Create tables
 	_, err = db.Exec(
 		`
