@@ -52,6 +52,7 @@ var (
 	clientID     = os.Getenv("GOOGLE_CLIENT_ID")
 	clientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
 	redirectURL  = os.Getenv("REDIRECT_URL")
+	bindAddress  = os.Getenv("BIND_ADDRESS")
 	jwtSecret    = []byte(os.Getenv("JWT_SECRET"))
 )
 
@@ -511,6 +512,6 @@ func main() {
 
 	s := &Server{router: gin.New(), db: db}
 	s.prepareRouter()
-	s.router.Run("127.0.0.1:8080")
+	s.router.Run(bindAddress)
 }
 
