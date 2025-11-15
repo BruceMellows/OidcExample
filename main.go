@@ -71,26 +71,34 @@ var (
 // --- Helpers ---
 
 func (s *Server) getUser(email string) (User, error) {
-	user := User {
-		email: email,
-		token: "",
-		login: "",
-		admin: false,
-	}
+	users.mutex.RLock()
+	user, ok := users.store[email]
+	users.mutex.RUnlock()
+	if !ok {
+		user = User {
+			email: email,
+			token: "",
+			login: "",
+			admin: false,
+		}
 
-	// Query single row
-	row := s.db.QueryRow("SELECT token, login, admin FROM users WHERE email = ?", email)
+		// Query single row
+		row := s.db.QueryRow("SELECT token, login, admin FROM users WHERE email = ?", email)
 
-	//var adminInt int
-	err := row.Scan(&user.token, &user.login, &user.admin)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// add email record to from db
-			_, err := s.db.Exec(`INSERT OR REPLACE INTO users (email, token, login, admin) VALUES (?, ?, ?, ?)`, user.email, user.token, user.login, user.admin)
-			if err != nil {
-				log.Println("[WARN] failed to create record for user with ID:", email, ", error:", err.Error())
+		//var adminInt int
+		err := row.Scan(&user.token, &user.login, &user.admin)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				// add email record to from db
+				_, err := s.db.Exec(`INSERT OR REPLACE INTO users (email, token, login, admin) VALUES (?, ?, ?, ?)`, user.email, user.token, user.login, user.admin)
+				if err != nil {
+					log.Println("[WARN] failed to create record for user with ID:", email, ", error:", err.Error())
+				}
 			}
 		}
+		users.mutex.Lock()
+		users.store[email] = user
+		users.mutex.Unlock()
 	}
 
 	return user, nil
@@ -277,7 +285,9 @@ func (s *Server) openOidcLoginHandler(c *gin.Context) {
 	challenge := codeChallengeS256(verifier)
 	state := fmt.Sprintf("%d", time.Now().UnixNano())
 
+	codeVerifier.mutex.Lock()
 	codeVerifier.store[state] = verifier
+	codeVerifier.mutex.Unlock()
 
 	authURL, _ := url.Parse("https://accounts.google.com/o/oauth2/v2/auth")
 	params := url.Values{}
@@ -300,12 +310,16 @@ func (s *Server) openOidcLoginHandler(c *gin.Context) {
 func (s *Server) openOidcCallbackHandler(c *gin.Context) {
 	code := c.Query("code")
 	state := c.Query("state")
+	codeVerifier.mutex.RLock()
 	verifier, ok := codeVerifier.store[state]
+	codeVerifier.mutex.RUnlock()
 	if !ok {
 		c.JSON(400, gin.H{"error": "invalid state"})
 		return
 	}
+	codeVerifier.mutex.Lock()
 	delete(codeVerifier.store, state)
+	codeVerifier.mutex.Unlock()
 
 	resp, err := http.PostForm("https://oauth2.googleapis.com/token", url.Values{
 		"client_id":     {clientID},
