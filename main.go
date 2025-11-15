@@ -76,7 +76,7 @@ func (s *Server) getUser(email string) (User, error) {
 	users.mutex.RUnlock()
 	if !ok {
 		user = User {
-			email: email,
+			email: "",
 			token: "",
 			login: "",
 			admin: false,
@@ -87,18 +87,23 @@ func (s *Server) getUser(email string) (User, error) {
 
 		//var adminInt int
 		err := row.Scan(&user.token, &user.login, &user.admin)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				// add email record to from db
-				_, err := s.db.Exec(`INSERT OR REPLACE INTO users (email, token, login, admin) VALUES (?, ?, ?, ?)`, user.email, user.token, user.login, user.admin)
-				if err != nil {
-					log.Println("[WARN] failed to create record for user with ID:", email, ", error:", err.Error())
-				}
+		if err == nil {
+			user.email = email
+		} else if err == sql.ErrNoRows {
+			// add email record to from db
+			_, err := s.db.Exec(`INSERT OR REPLACE INTO users (email, token, login, admin) VALUES (?, ?, ?, ?)`, user.email, user.token, user.login, user.admin)
+			if err == nil {
+				user.email = email
+			} else {
+				log.Println("[WARN] failed to create record for user with ID:", email, ", error:", err.Error())
 			}
 		}
-		users.mutex.Lock()
-		users.store[email] = user
-		users.mutex.Unlock()
+
+		if user.email != "" {
+			users.mutex.Lock()
+			users.store[email] = user
+			users.mutex.Unlock()
+		}
 	}
 
 	return user, nil
