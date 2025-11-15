@@ -157,6 +157,11 @@ func extendedLogFormatter() gin.LogFormatter {
 	}
 }
 
+func logUTC(v ...any) {
+	ts := time.Now().UTC().Format("2006-01-02T15:04:05.000000000Z")
+	log.Println("[GIN]", ts, fmt.Sprint(v...))
+}
+
 func (s *Server) ensureUserMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// get email from claims
@@ -512,6 +517,8 @@ func main() {
 
 	s := &Server{router: gin.New(), db: db}
 	s.prepareRouter()
+	log.SetFlags(0)
+	logUTC("| Starting BIND_ADDRESS=", bindAddress)
 	s.router.Run(bindAddress)
 }
 
