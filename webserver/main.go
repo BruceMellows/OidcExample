@@ -49,11 +49,12 @@ type Users struct {
 // --- Static Global Variables ---
 
 var (
-	clientID     = os.Getenv("GOOGLE_CLIENT_ID")
-	clientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
-	redirectURL  = os.Getenv("REDIRECT_URL")
-	bindAddress  = os.Getenv("BIND_ADDRESS")
-	jwtSecret    = []byte(os.Getenv("JWT_SECRET"))
+	clientID      = os.Getenv("GOOGLE_CLIENT_ID")
+	clientSecret  = os.Getenv("GOOGLE_CLIENT_SECRET")
+	redirectURL   = os.Getenv("REDIRECT_URL")
+	bindAddress   = os.Getenv("BIND_ADDRESS")
+	jwtSecret     = []byte(os.Getenv("JWT_SECRET"))
+	databasePath  = os.Getenv("DATABASE_PATH")
 )
 
 // --- Dynamic Global Variables ---
@@ -490,7 +491,7 @@ func main() {
 		log.Fatal("GOOGLE_CLIENT_ID and JWT_SECRET must be set")
 	}
 
-	db, err := sql.Open("sqlite3", "./data/backuptool.sqlite")
+	db, err := sql.Open("sqlite3", databasePath)
 	if err != nil {
 		log.Fatal(err)
 	}
