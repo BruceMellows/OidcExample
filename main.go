@@ -245,7 +245,7 @@ func getUser(c *gin.Context) (User, error) {
 
 // --- Routes ---
 
-func (s *Server) loginHandler(c *gin.Context) {
+func (s *Server) oidcLoginHandler(c *gin.Context) {
 	forceConsent := c.Query("force_consent")
 	verifier, _ := generateCodeVerifier()
 	challenge := codeChallengeS256(verifier)
@@ -271,7 +271,7 @@ func (s *Server) loginHandler(c *gin.Context) {
 	c.Redirect(302, authURL.String())
 }
 
-func (s *Server) callbackHandler(c *gin.Context) {
+func (s *Server) oidcCallbackHandler(c *gin.Context) {
 	code := c.Query("code")
 	state := c.Query("state")
 	verifier, ok := codeVerifierStore[state]
@@ -418,14 +418,15 @@ func (s *Server) prepareRouter() {
 	s.router.Use(gin.LoggerWithFormatter(extendedLogFormatter()))
 	s.router.Use(gin.Recovery())
 
-	s.router.GET("/status", s.statusHandler)
-	s.router.GET("/login", s.loginHandler)
-	s.router.GET("/callback", s.callbackHandler)
-	s.router.GET("/refresh", s.refreshHandler)
+	open := s.router.Group("/open")
+	open.GET("/status", s.statusHandler)
+	open.GET("/oidc/login", s.oidcLoginHandler)
+	open.GET("/oidc/callback", s.oidcCallbackHandler)
 
 	user := s.router.Group("/user")
 	user.Use(s.extractUserIdentityMiddleware())
 	user.GET("/info", s.userInfoHandler)
+	user.GET("/oidc/refresh", s.refreshHandler)
 
 	admin := s.router.Group("/admin")
 	admin.Use(s.extractUserIdentityMiddleware())
