@@ -1,0 +1,16 @@
+services:
+  webserver:
+    build: .
+    container_name: go-webserver
+    env_file: .docker.env              # only loaded by docker; not copied
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8081"          # exposed only to localhost for nginx
+    volumes:
+      - ./data:/app/data               # mount DB/data directory
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
