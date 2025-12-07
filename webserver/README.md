@@ -9,3 +9,4 @@ DATABASE_PATH=./data/database.sqlite
 AUTO_ADMIN=TheAdminUser@gmail.com
 GIN_MODE=release
 ```
+You probably want to leave the `AUTO_ADMIN` setting out of your production env.
