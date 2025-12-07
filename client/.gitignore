@@ -1,0 +1,89 @@
+## Build results
+bin/
+obj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]og/
+[Ll]ogs/
+
+## .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.deps.json
+*.runtimeconfig.json
+
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache/options directory
+.vscode/
+
+## Rider / JetBrains
+.idea/
+*.DotSettings.user
+
+## NuGet
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+packages/
+**/packages/*
+
+## MSBuild
+*.cache
+*.dbmdl
+
+# Backup & temporary
+*.bak
+*.tmp
+*.temp
+*.log
+
+## Publish outputs
+publish/
+out/
+
+## ASP.NET temp
+App_Data/
+Generated_Code/
+
+## Entity Framework
+Migrations/
+
+## Azure
+.csx/
+*.publishsettings
+
+## Resharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+## StyleCop
+StyleCopReport.xml
+
+## Coverage
+coverage/
+*.coverage
+*.coveragexml
+.coverage
+
+## Test results
+TestResult*/
+TestResults/
+*.trx
+*.coverage
+
+## Logs
+*.log
+logs/
+
+## Others
+*.DS_Store
+Thumbs.db
